@@ -20,11 +20,13 @@ pandas = "~2.0.3"
 numpy = "~1.24.3"
 tensorflow-io-gcs-filesystem = "0.31.0"
 tensorflow-cpu = "2.12.1"
+
 pydot = "~1.4.2"
 streamlit = "~1.29.0"
 plotly = "~5.15.0"
 altair = "~5.1.2"
 streamlit-extras = "~0.3.5"
+tensorflow-addons = "~0.22.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "~23.7.0"
