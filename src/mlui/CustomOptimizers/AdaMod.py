@@ -78,21 +78,21 @@ class AdaMod(Optimizer):
         if hasattr(self, "_built") and self._built:
             return
         self._built = True
-        self._momentums = []
-        self._velocities = []
-        self._exp_avg_lr = []
+        self.m = []
+        self.v = []
+        self.s = []
         for var in var_list:
-            self._momentums.append(
+            self.m.append(
                 self.add_variable_from_reference(
                     model_variable=var, variable_name="m"
                 )
             )
-            self._velocities.append(
+            self.v.append(
                 self.add_variable_from_reference(
                     model_variable=var, variable_name="v"
                 )
             )
-            self._exp_avg_lr.append(
+            self.s.append(
                 self.add_variable_from_reference(
                     model_variable=var, variable_name="s"
                 )
@@ -107,9 +107,9 @@ class AdaMod(Optimizer):
         beta_2_power = tf.pow(tf.cast(self.beta_2, variable.dtype), local_step)
 
         var_key = self._var_key(variable)
-        m = self._momentums[self._index_dict[var_key]]
-        v = self._velocities[self._index_dict[var_key]]
-        s = self._exp_avg_lr[self._index_dict[var_key]]
+        m = self.m[self._index_dict[var_key]]
+        v = self.v[self._index_dict[var_key]]
+        s = self.s[self._index_dict[var_key]]
 
         alpha = lr * tf.sqrt(1 - beta_2_power) / (1 - beta_1_power)
 
