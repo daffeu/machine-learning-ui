@@ -29,9 +29,9 @@ class MADGRAD(Optimizer):
     def __init__(
             self,
             learning_rate=0.01,
-            momentum=0.0,
+            momentum=0.9,
             epsilon=1e-6,
-            weight_decay=0.0,
+            weight_decay=None,
             clipnorm=None,
             clipvalue=None,
             global_clipnorm=None,
@@ -44,6 +44,7 @@ class MADGRAD(Optimizer):
     ):
         super().__init__(
             name=name,
+            weight_decay=weight_decay,
             clipnorm=clipnorm,
             clipvalue=clipvalue,
             global_clipnorm=global_clipnorm,
@@ -56,16 +57,9 @@ class MADGRAD(Optimizer):
 
         self._learning_rate = self._build_learning_rate(learning_rate)
         self.momentum = momentum
-        self.weight_decay = weight_decay
         self.epsilon = epsilon
-        if weight_decay != 0:
-            self.use_decay = True
-        else:
-            self.use_decay = False
         if momentum != 0:
             self.use_momentum = True
-        else:
-            self.use_momentum = False
 
     def build(self, var_list):
         """Initialize optimizer variables.
@@ -85,18 +79,24 @@ class MADGRAD(Optimizer):
             return
 
         self._built = True
-        self._grad_sum = []
-        self._grad_sum_sq = []
+        self.m = []
+        self.v = []
+        self.x0 = []
         for var in var_list:
-            self._grad_sum.append(
+            self.m.append(
                 self.add_variable_from_reference(
-                    model_variable=var, variable_name="s"
+                    model_variable=var, variable_name="m"
                 )
             )
 
-            self._grad_sum_sq.append(
+            self.v.append(
                 self.add_variable_from_reference(
                     model_variable=var, variable_name="v"
+                )
+            )
+            self.x0.append(
+                self.add_variable_from_reference(
+                    model_variable=var, variable_name="x0"
                 )
             )
 
@@ -106,30 +106,17 @@ class MADGRAD(Optimizer):
         lr_t = tf.cast(self.learning_rate, variable.dtype)
         momentum = tf.cast(self.momentum, variable.dtype)
         step = tf.cast(self.iterations + 1, variable.dtype)
-        decay = tf.cast(self.weight_decay, variable.dtype)
 
         var_key = self._var_key(variable)
-        s = self._grad_sum[self._index_dict[var_key]]
-        v = self._grad_sum_sq[self._index_dict[var_key]]
-
-        ck = 1 - momentum
+        m = self.m[self._index_dict[var_key]]
+        v = self.v[self._index_dict[var_key]]
+        x0 = self.x0[self._index_dict[var_key]]
         lamb = lr_t * tf.sqrt(step)
 
         if isinstance(gradient, tf.IndexedSlices):
-            #Sparse gradients.
-
-            if self.use_momentum:
-                raise RuntimeError(
-                    "momentum != 0 is not compatible with "
-                    "sparse gradients"
-                )
-            if self.use_decay:
-                raise RuntimeError(
-                    "weight_decay option is not "
-                    "compatible with sparse gradients"
-                )
-            s.assign_add(s)
-            s.scatter_add(
+            # Sparse gradients.
+            m.assign_add(m)
+            m.scatter_add(
                 tf.IndexedSlices(
                     gradient.values * lamb, gradient.indices
                 )
@@ -142,34 +129,24 @@ class MADGRAD(Optimizer):
                 )
             )
 
-            rms = tf.pow(v, 1 / 3) + self.epsilon
-            x0 = variable + tf.divide(s, rms)
-            var = x0 - tf.divide(s, rms)
+            denom = tf.pow(v, 1 / 3) + self.epsilon
+
+            z = x0 - tf.divide(m, denom)
+
+            var = (1 - momentum) * variable + momentum * z
 
             variable.assign(var)
 
         else:
-            #Dence gradients.
-
-            if self.use_decay:
-                gradient += decay * variable
-
-            if not self.use_momentum:
-                rms = tf.pow(v, 1/3) + self.epsilon
-                x0 = variable + tf.divide(s, rms)
-            else:
-                x0 = variable
-
-            s.assign_add(lamb * gradient)
+            # Dence gradients.
+            m.assign_add(lamb * gradient)
             v.assign_add(lamb * (gradient * gradient))
 
-            rms = tf.pow(v, 1/3) + self.epsilon
+            denom = tf.pow(v, 1 / 3) + self.epsilon
 
-            if not self.use_momentum:
-                var = x0 - tf.divide(s, rms)
-            else:
-                z = x0 - tf.divide(s, rms)
-                var = variable * (1 - ck) + z * ck
+            z = x0 - tf.divide(m, denom)
+
+            var = (1 - momentum) * variable + momentum * z
 
             variable.assign(var)
 
@@ -182,7 +159,6 @@ class MADGRAD(Optimizer):
                     self._learning_rate
                 ),
                 'momentum': self.momentum,
-                'weight_decay': self.weight_decay,
                 'epsilon': self.epsilon,
             }
         )
