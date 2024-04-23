@@ -35,8 +35,6 @@ class LARS(Optimizer):
             learning_rate=0.01,
             momentum=0.9,
             weight_decay=0.0,
-            dampening=0,
-            nesterov=False,
             trust_coefficient=0.001,
             epsilon=1e-8,
             clipnorm=None,
@@ -64,14 +62,8 @@ class LARS(Optimizer):
         self._learning_rate = self._build_learning_rate(learning_rate)
         self.momentum = momentum
         self.weight_decay = weight_decay
-        self.dampening = dampening
-        self.nesterov = nesterov
         self.trust_coefficient = trust_coefficient
         self.epsilon = epsilon
-        if momentum != 0:
-            self.use_momentum = True
-        else:
-            self.use_momentum = False
         if weight_decay !=0:
             self.use_weight_decay = True
         else:
@@ -90,9 +82,9 @@ class LARS(Optimizer):
         super().build(var_list)
         if hasattr(self, "_built") and self._built:
             return
-        self.momentums = []
+        self.m = []
         for var in var_list:
-            self.momentums.append(
+            self.m.append(
                 self.add_variable_from_reference(
                     model_variable=var, variable_name="m"
                 )
@@ -103,42 +95,28 @@ class LARS(Optimizer):
         """Update step given gradient and the associated model variable."""
 
         lr_t = tf.cast(self.learning_rate, variable.dtype)
-        dampening = tf.cast(self.dampening, variable.dtype)
         weight_decay = tf.cast(self.weight_decay, variable.dtype)
         momentum = tf.cast(self.momentum, variable.dtype)
 
-        m = None
         var_key = self._var_key(variable)
-        m = self.momentums[self._index_dict[var_key]]
+        m = self.m[self._index_dict[var_key]]
 
-        d_p = gradient
+        if self.use_weight_decay:
+            gradient += variable * weight_decay
         w_norm = tf.norm(variable, ord=2)
         grad_norm = tf.norm(gradient, ord=2)
 
-        # lars scaling + weight decay part
-        if self.use_weight_decay:
-            d_p += variable * weight_decay
-
-        lars_lr = lr_t * tf.where(
+        lars_lr = tf.where(
             tf.greater(w_norm, 0),
             tf.where(tf.greater(grad_norm, 0),
-                     (self.trust_coefficient * w_norm / (grad_norm + w_norm * weight_decay + self.epsilon)), 1.0),
+                     (self.trust_coefficient * w_norm / (grad_norm + self.epsilon)), 1.0),
             1.0)
-        d_p += variable * weight_decay
-        d_p *= lars_lr
 
-        if self.use_momentum:
-            m_t = tf.multiply(m, momentum)
-            m_t = tf.add(m_t, tf.multiply(gradient, 1 - dampening))
+        m_t = tf.multiply(m, momentum)
+        m_t += lr_t*lars_lr*gradient
+        m.assign(m_t)
 
-            if self.nesterov:
-                d_p += momentum * m_t
-            else:
-                d_p = m_t
-
-            m.assign(m_t)
-
-        variable.assign_sub(lr_t * d_p)
+        variable.assign_sub(m)
 
     def get_config(self):
         config = super().get_config()
@@ -147,9 +125,7 @@ class LARS(Optimizer):
             {
                 "learning_rate": self._serialize_hyperparameter("learning_rate"),
                 "momentum": self._serialize_hyperparameter("momentum"),
-                "dampening": self.dampening,
                 "weight_decay": self._serialize_hyperparameter("weight_decay"),
-                "nesterov": self.nesterov,
                 "trust_coefficient": self.trust_coefficient,
                 "epsilon": self.epsilon,
             }
