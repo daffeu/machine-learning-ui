@@ -300,30 +300,6 @@ class LAMB(OptimizerWidget):
         }
 
 
-class Lookahead(OptimizerWidget):
-    """Lookahead optimizer's widget."""
-
-    def __init__(self):
-        self.optimizer = st.selectbox(
-                "Optimizer:",
-                options=(tf.keras.optimizers.SGD(), tf.keras.optimizers.Adam(), tf.keras.optimizers.RMSprop(),
-                 tf.keras.optimizers.Adamax(), tf.keras.optimizers.Adagrad())
-            )
-
-    @property
-    def params(self) -> t.LookaheadParams:
-        """Lookahead optimizer's parameters.
-
-        Returns
-        -------
-        dict
-            Dictionary containing values of adjustable parameters.
-        """
-        return {
-            "optimizer": tf.keras.optimizers.Optimizer(self.optimizer)
-        }
-
-
 class RAdam(OptimizerWidget):
     """RAdam optimizer's widget."""
 
@@ -385,15 +361,7 @@ class MADGRAD(OptimizerWidget):
                 "Momentum:",
                 min_value=0.0,
                 max_value=0.999,
-                value=0.0,
-                step=0.001,
-                format="%.3f",
-            )
-        self.weight_decay = st.number_input(
-                "Weight decay:",
-                min_value=0.0,
-                max_value=0.999,
-                value=0.0,
+                value=0.9,
                 step=0.001,
                 format="%.3f",
             )
@@ -410,7 +378,6 @@ class MADGRAD(OptimizerWidget):
         return {
             "learning_rate": float(self.learning_rate),
             "momentum": float(self.momentum),
-            "weight_decay": float(self.weight_decay),
         }
 
 
@@ -422,7 +389,7 @@ class LARS(OptimizerWidget):
                 "Learning rate:",
                 min_value=0.0,
                 max_value=0.1,
-                value=0.01,
+                value=0.02,
                 step=0.005,
                 format="%e",
             )
@@ -437,22 +404,10 @@ class LARS(OptimizerWidget):
         self.weight_decay = st.number_input(
                 "Weight decay:",
                 min_value=0.0,
-                max_value=0.999,
-                value=0.0,
-                step=0.001,
+                max_value=0.01,
+                value=0.0005,
+                step=0.00005,
                 format="%.3f",
-            )
-        self.dampening = st.number_input(
-                "Dampening for momentum:",
-                min_value=0.0,
-                max_value=0.1,
-                value=0.0,
-                step=0.001,
-                format="%.3f",
-            )
-        self.nesterov = st.selectbox(
-                "Nesterov momentum:",
-                (False, True),
             )
 
     @property
@@ -468,8 +423,6 @@ class LARS(OptimizerWidget):
             "learning_rate": float(self.learning_rate),
             "momentum": float(self.momentum),
             "weight_decay": float(self.weight_decay),
-            "dampening": float(self.dampening),
-            "nesterov": bool(self.nesterov),
         }
 
 

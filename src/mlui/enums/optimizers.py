@@ -1,6 +1,5 @@
 import tensorflow as tf
-import tensorflow_addons as tfa
-from mlui.CustomOptimizers import AdaMod, Apollo, MADGRAD, LARS, AdaHessian
+from mlui.CustomOptimizers import AdaMod, Apollo, MADGRAD, LARS, AdaHessian, LAMB, RAdam
 
 import mlui.types.classes as ct
 import mlui.types.widgets as wt
@@ -12,9 +11,8 @@ classes: ct.OptimizerTypes = {
     "SGD": tf.keras.optimizers.SGD,
     "AdaMod": AdaMod,
     "Apollo": Apollo,
-    "LAMB": tfa.optimizers.LAMB,
-    "Lookahead": tfa.optimizers.Lookahead,
-    "RAdam": tfa.optimizers.RectifiedAdam,
+    "LAMB": LAMB,
+    "RAdam": RAdam,
     "MADGRAD": MADGRAD,
     "LARS": LARS,
     "AdaHessian": AdaHessian,
