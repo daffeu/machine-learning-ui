@@ -55,6 +55,7 @@ class AdaHessian(Optimizer):
     ):
         super().__init__(
             name=name,
+            weight_decay=weight_decay,
             clipnorm=clipnorm,
             clipvalue=clipvalue,
             global_clipnorm=global_clipnorm,
@@ -69,7 +70,6 @@ class AdaHessian(Optimizer):
         self.warmup = warmup
         self.beta_1 = beta_1
         self.beta_2 = beta_2
-        self.weight_decay = weight_decay
         self.epsilon = epsilon
         self.hessian_power = hessian_power
 
@@ -386,7 +386,6 @@ class AdaHessian(Optimizer):
         """Update step given gradient and the associated model variable."""
 
         lr_t = tf.cast(self.learning_rate, variable.dtype)
-        weight_decay = tf.cast(self.weight_decay, variable.dtype)
         beta_1 = tf.cast(self.beta_1, variable.dtype)
         beta_2 = tf.cast(self.beta_2, variable.dtype)
         eps = tf.cast(self.epsilon, variable.dtype)
@@ -407,9 +406,6 @@ class AdaHessian(Optimizer):
 
         bias_correction1 = 1 - beta_1 ** step
         bias_correction2 = 1 - beta_2 ** step
-
-        if self.weight_decay != 0:
-            variable.assign_sub(lr_t * weight_decay * variable)
 
         denom = tf.pow(tf.sqrt(exp_hessian_diag_sq / bias_correction2), k) + eps
 
