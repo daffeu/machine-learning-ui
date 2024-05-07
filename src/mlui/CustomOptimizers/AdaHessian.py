@@ -55,7 +55,6 @@ class AdaHessian(Optimizer):
     ):
         super().__init__(
             name=name,
-            weight_decay=weight_decay,
             clipnorm=clipnorm,
             clipvalue=clipvalue,
             global_clipnorm=global_clipnorm,
@@ -67,6 +66,7 @@ class AdaHessian(Optimizer):
         )
 
         self._learning_rate = self._build_learning_rate(learning_rate)
+        self.weight_decay = weight_decay
         self.warmup = warmup
         self.beta_1 = beta_1
         self.beta_2 = beta_2
