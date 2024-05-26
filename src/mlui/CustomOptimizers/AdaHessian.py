@@ -92,18 +92,18 @@ class AdaHessian(Optimizer):
             return
 
         self._built = True
-        self._exp_avgs = []
-        self._exp_hessian_diag_sqs = []
+        self.m = []
+        self.v = []
         for var in var_list:
-            self._exp_avgs.append(
+            self.m.append(
                 self.add_variable_from_reference(
-                    model_variable=var, variable_name="exp_avg"
+                    model_variable=var, variable_name="m"
                 )
             )
 
-            self._exp_hessian_diag_sqs.append(
+            self.v.append(
                 self.add_variable_from_reference(
-                    model_variable=var, variable_name="exp_hessian_diag_sq"
+                    model_variable=var, variable_name="v"
                 )
             )
 
@@ -137,17 +137,18 @@ class AdaHessian(Optimizer):
                     var_list = var_list()
 
         grads = tape.gradient(loss, var_list)
-        v = [np.random.uniform(0, 1, size=p.shape) for p in var_list]
-        for vi in v:
-            vi[vi < 0.5] = -1
-            vi[vi >= 0.5] = 1
-        v = [tf.convert_to_tensor(vi, dtype=tf.dtypes.float32) for vi in v]
+        z = [np.random.uniform(0, 1, size=v.shape) for v in var_list]
+        for i in z:
+            i[i < 0.5] = -1
+            i[i >= 0.5] = 1
 
-        vprod = tf.reduce_sum([tf.reduce_sum(vi * grad) for vi, grad in zip(v, grads)])
+        z = [tf.convert_to_tensor(i, dtype=tf.dtypes.float32) for i in z]
 
-        Hv = gradients(vprod, var_list)
+        z_reduced = tf.reduce_sum([tf.reduce_sum(i * grad) for i, grad in zip(z, grads)])
 
-        hessians = [tf.abs(Hvi * vi) for Hvi, vi in zip(Hv, v)]
+        Hz = gradients(z_reduced, var_list)
+
+        hessians = [tf.abs(Hi * i) for Hi, i in zip(Hz, z)]
         return list(zip(grads, hessians, var_list))
 
     def minimize(self, loss, var_list, tape=None):
@@ -394,22 +395,24 @@ class AdaHessian(Optimizer):
         step = tf.cast(self.iterations + 1, variable.dtype)
 
         var_key = self._var_key(variable)
-        exp_avg = self._exp_avgs[self._index_dict[var_key]]
-        exp_hessian_diag_sq = self._exp_hessian_diag_sqs[self._index_dict[var_key]]
+        m = self.m[self._index_dict[var_key]]
+        v = self.v[self._index_dict[var_key]]
 
         lr_t = lr_t/warmup
 
         hess_average = tf.reduce_mean(hessian)
 
-        exp_avg.assign(exp_avg * beta_1 + gradient * (1 - beta_1))
-        exp_hessian_diag_sq.assign(exp_hessian_diag_sq * beta_2 + tf.pow(hess_average, 2) * (1 - beta_2))
+        m.assign(m * beta_1 + gradient * (1 - beta_1))
+        v.assign(v * beta_2 + tf.pow(hess_average, 2) * (1 - beta_2))
 
-        bias_correction1 = 1 - beta_1 ** step
-        bias_correction2 = 1 - beta_2 ** step
+        bias_correction_1 = 1 - beta_1 ** step
+        bias_correction_2 = 1 - beta_2 ** step
 
-        denom = tf.pow(tf.sqrt(exp_hessian_diag_sq / bias_correction2), k) + eps
+        v_t = tf.pow(tf.sqrt(v / bias_correction_2), k) + eps
+        m_t = tf.divide(m, bias_correction_1)
+        update = m_t/v_t
 
-        variable.assign_sub(lr_t * exp_avg / bias_correction1 / denom)
+        variable.assign_sub(lr_t * update)
 
     def get_config(self):
         config = super(AdaHessian, self).get_config()
