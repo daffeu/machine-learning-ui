@@ -25,7 +25,6 @@ widgets: wt.OptimizerWidgetTypes = {
     "AdaMod": widget.AdaMod,
     "Apollo": widget.Apollo,
     "LAMB": widget.LAMB,
-    "Lookahead": widget.Lookahead,
     "RAdam": widget.RAdam,
     "MADGRAD": widget.MADGRAD,
     "LARS": widget.LARS,

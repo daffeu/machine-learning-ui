@@ -233,9 +233,9 @@ class Apollo(OptimizerWidget):
                 step=0.00005,
                 format="%.3f",
             )
-        self.weight_decay_type = st.selectbox(
-                "Weight Decay Type:",
-                ("L2", "Decoupled", "Stable"),
+        self.rebound = st.selectbox(
+                "Rebound Type:",
+                ("constant", "belief"),
             )
 
     @property
@@ -251,7 +251,7 @@ class Apollo(OptimizerWidget):
             "learning_rate": float(self.learning_rate),
             "beta": float(self.beta),
             "weight_decay": float(self.weight_decay),
-            "weight_decay_type": str(self.weight_decay_type),
+            "rebound": str(self.rebound),
         }
 
 
@@ -283,6 +283,14 @@ class LAMB(OptimizerWidget):
                 step=0.005,
                 format="%.3f",
             )
+        self.weight_decay = st.number_input(
+                "Weight decay:",
+                min_value=0.0,
+                max_value=0.1,
+                value=0.0,
+                step=0.001,
+                format="%.3f",
+            )
 
     @property
     def params(self) -> t.LAMBParams:
@@ -297,6 +305,7 @@ class LAMB(OptimizerWidget):
             "learning_rate": float(self.learning_rate),
             "beta_1": float(self.beta_1),
             "beta_2": float(self.beta_2),
+            "weight_decay": float(self.weight_decay),
         }
 
 
@@ -389,7 +398,7 @@ class LARS(OptimizerWidget):
                 "Learning rate:",
                 min_value=0.0,
                 max_value=0.1,
-                value=0.02,
+                value=0.01,
                 step=0.005,
                 format="%e",
             )

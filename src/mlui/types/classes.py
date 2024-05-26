@@ -120,7 +120,7 @@ class ApolloParams(OptimizerParams):
     learning_rate: float
     beta: float
     weight_decay: float
-    weight_decay_type: str
+    rebound: str
 
 
 class LAMBParams(OptimizerParams):
@@ -129,12 +129,7 @@ class LAMBParams(OptimizerParams):
     learning_rate: float
     beta_1: float
     beta_2: float
-
-
-class LookaheadParams(OptimizerParams):
-    """Type annotation for the Lookahead optimizer."""
-
-    optimizer: tf.keras.optimizers.Optimizer
+    weight_decay: float
 
 
 class RAdamParams(OptimizerParams):
