@@ -105,6 +105,7 @@ class MADGRAD(Optimizer):
 
         lr_t = tf.cast(self.learning_rate, variable.dtype)
         momentum = tf.cast(self.momentum, variable.dtype)
+        eps = tf.cast(self.epsilon, variable.dtype)
         step = tf.cast(self.iterations + 1, variable.dtype)
 
         var_key = self._var_key(variable)
@@ -129,11 +130,11 @@ class MADGRAD(Optimizer):
                 )
             )
 
-            denom = tf.pow(v, 1 / 3) + self.epsilon
+            denom = tf.pow(v, 1 / 3) + eps
 
             z = x0 - tf.divide(m, denom)
 
-            var = (1 - momentum) * variable + momentum * z
+            var = tf.multiply((1 - momentum), variable) + tf.multiply(momentum, z)
 
             variable.assign(var)
 
@@ -142,11 +143,11 @@ class MADGRAD(Optimizer):
             m.assign_add(lamb * gradient)
             v.assign_add(lamb * (gradient * gradient))
 
-            denom = tf.pow(v, 1 / 3) + self.epsilon
+            denom = tf.pow(v, 1 / 3) + eps
 
             z = x0 - tf.divide(m, denom)
 
-            var = (1 - momentum) * variable + momentum * z
+            var = tf.multiply((1 - momentum), variable) + tf.multiply(momentum, z)
 
             variable.assign(var)
 

@@ -35,7 +35,7 @@ class LARS(Optimizer):
             learning_rate=0.01,
             momentum=0.9,
             weight_decay=0.0,
-            trust_coefficient=0.001,
+            trust_coefficient=0.005,
             epsilon=1e-8,
             clipnorm=None,
             clipvalue=None,
